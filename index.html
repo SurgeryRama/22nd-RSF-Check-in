@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Permissions-Policy" content="camera=*, microphone=()">
+<title>Check-in — 22nd RSF</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--p:#004d99;--a:#0066cc;--g:#27ae60;--r:#e74c3c;--w:#f39c12;}
+*{box-sizing:border-box;}
+body{font-family:'Sarabun',sans-serif;background:#0a1628;color:#fff;min-height:100vh;margin:0;}
+.topbar{background:rgba(255,255,255,.06);padding:12px 18px;display:flex;align-items:center;
+        justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.1);flex-wrap:wrap;gap:8px;}
+.topbar h4{margin:0;font-size:.95rem;font-weight:700;}
+.topbar h4 sup{font-size:.55em;}
+.point-sel{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;
+           border-radius:8px;padding:6px 10px;font-family:inherit;font-size:.8rem;cursor:pointer;max-width:200px;}
+.point-sel option{color:#000;}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;flex-shrink:0;}
+.dot-ready{background:#2ecc71;}.dot-scanning{background:#f39c12;animation:blink 1s infinite;}.dot-error{background:#e74c3c;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.main{display:flex;flex-direction:column;align-items:center;padding:16px 12px;gap:14px;max-width:540px;margin:auto;}
+.stats-bar{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;
+           padding:12px;width:100%;display:flex;justify-content:space-around;text-align:center;}
+.sb-num{font-size:1.9rem;font-weight:700;}.sb-lbl{font-size:.68rem;color:rgba(255,255,255,.5);margin-top:2px;}
+.sb-green{color:#2ecc71;}.sb-orange{color:#f39c12;}.sb-white{color:#fff;}
+.mode-tabs{display:flex;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+           border-radius:30px;padding:4px;gap:4px;width:100%;}
+.mode-btn{flex:1;padding:9px;border:none;border-radius:26px;font-family:inherit;font-size:.86rem;
+          font-weight:600;cursor:pointer;transition:all .2s;background:none;color:rgba(255,255,255,.5);}
+.mode-btn.active{background:var(--p);color:#fff;box-shadow:0 4px 14px rgba(0,77,153,.5);}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:18px;overflow:hidden;width:100%;}
+.card-head{padding:13px 17px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.07);}
+.card-head h5{margin:0;font-size:.9rem;font-weight:700;}
+.card-body{padding:14px;}
+
+/* ── Camera Test Panel ── */
+.test-panel{background:rgba(255,165,0,.07);border:1px solid rgba(255,165,0,.25);border-radius:14px;padding:16px;width:100%;}
+.test-panel h5{margin:0 0 12px;font-size:.88rem;font-weight:700;color:#f39c12;}
+.test-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.test-item:last-child{border-bottom:none;}
+.test-icon{font-size:1.2rem;width:28px;text-align:center;flex-shrink:0;}
+.test-label{flex:1;font-size:.83rem;}
+.test-badge{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;}
+.tb-ok{background:rgba(46,204,113,.2);color:#2ecc71;}
+.tb-warn{background:rgba(243,156,18,.2);color:#f39c12;}
+.tb-error{background:rgba(231,76,60,.2);color:#e74c3c;}
+.tb-check{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);}
+.btn-run-test{background:rgba(255,165,0,.2);border:1px solid rgba(255,165,0,.4);color:#f39c12;
+              border-radius:8px;padding:7px 16px;font-family:inherit;font-size:.8rem;font-weight:700;
+              cursor:pointer;transition:all .2s;margin-top:4px;}
+.btn-run-test:hover{background:rgba(255,165,0,.3);}
+.test-log{background:rgba(0,0,0,.3);border-radius:8px;padding:10px 12px;margin-top:10px;
+          font-size:.72rem;color:rgba(255,255,255,.55);line-height:1.7;max-height:120px;overflow-y:auto;
+          font-family:'Courier New',monospace;display:none;}
+.test-log.show{display:block;}
+.fix-box{background:rgba(0,0,0,.3);border-radius:10px;padding:12px;margin-top:10px;display:none;}
+.fix-box p{font-size:.8rem;font-weight:700;color:#f39c12;margin-bottom:8px;}
+.fix-box div{font-size:.78rem;line-height:1.8;}
+
+/* ── Scanner ── */
+#qr-reader{width:100%;border-radius:10px;overflow:hidden;background:#000;min-height:180px;}
+#qr-reader video{border-radius:10px;}
+#qr-reader button{background:var(--p)!important;border-radius:8px!important;color:#fff!important;
+                  font-family:'Sarabun',sans-serif!important;border:none!important;padding:7px 12px!important;}
+#qr-reader select{background:#1a2744!important;color:#fff!important;border-radius:6px!important;
+                  border:1px solid rgba(255,255,255,.2)!important;padding:4px 8px!important;
+                  font-family:'Sarabun',sans-serif!important;}
+#qr-reader img{display:none;}
+.scan-status{text-align:center;font-size:.82rem;padding:8px 12px;border-radius:8px;margin-top:10px;}
+.ss-idle{color:rgba(255,255,255,.55);background:rgba(255,255,255,.04);}
+.ss-scanning{color:#f39c12;background:rgba(243,156,18,.08);}
+.ss-ok{color:#2ecc71;background:rgba(46,204,113,.08);}
+.ss-error{color:#e74c3c;background:rgba(231,76,60,.08);}
+.perm-notice{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:12px;
+             padding:14px 16px;font-size:.82rem;line-height:1.8;margin-top:10px;display:none;}
+.perm-notice.show{display:block;}
+.perm-notice strong{color:#e74c3c;}
+.perm-notice li{list-style:none;padding:2px 0;font-size:.79rem;}
+.perm-notice li::before{content:"→ ";}
+.btn-start{width:100%;background:linear-gradient(135deg,#003d80,#0077dd);color:#fff;border:none;
+           border-radius:12px;padding:13px;font-weight:700;font-family:inherit;font-size:.93rem;
+           cursor:pointer;transition:all .2s;margin-top:10px;}
+.btn-start:hover{opacity:.9;}
+.btn-stop{width:100%;background:#c0392b;color:#fff;border:none;border-radius:12px;padding:12px;
+          font-weight:700;font-family:inherit;font-size:.9rem;cursor:pointer;margin-top:8px;display:none;}
+.btn-stop:hover{background:#a93226;}
+.upload-area{border:2px dashed rgba(255,255,255,.15);border-radius:10px;padding:16px;
+             text-align:center;cursor:pointer;transition:all .2s;margin-top:10px;}
+.upload-area:hover{border-color:var(--p);background:rgba(0,77,153,.08);}
+.upload-area input{display:none;}
+.upload-area .ui{font-size:1.6rem;margin-bottom:4px;}
+.upload-area p{font-size:.78rem;color:rgba(255,255,255,.45);margin:0;}
+.token-row{display:flex;gap:8px;margin-top:10px;}
+.token-row input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+                 color:#fff;border-radius:10px;padding:9px 12px;font-family:inherit;font-size:.84rem;outline:none;}
+.token-row input:focus{border-color:var(--p);}
+.token-row input::placeholder{color:rgba(255,255,255,.3);}
+.btn-send{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;
+          border-radius:10px;padding:9px 15px;font-weight:700;font-family:inherit;cursor:pointer;font-size:.84rem;}
+.btn-send:hover{background:rgba(255,255,255,.2);}
+.search-row{display:flex;gap:8px;}
+.search-row input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);
+                  color:#fff;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:.88rem;outline:none;}
+.search-row input:focus{border-color:var(--p);}
+.search-row input::placeholder{color:rgba(255,255,255,.3);}
+.btn-search{background:var(--p);color:#fff;border:none;border-radius:10px;padding:10px 15px;
+            font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.btn-search:hover{background:var(--a);}
+.result-item{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+             border-radius:12px;padding:13px;margin-top:10px;}
+.result-item .rn{font-weight:700;font-size:.93rem;margin-bottom:3px;}
+.result-item .rm{font-size:.77rem;color:rgba(255,255,255,.5);margin-bottom:10px;}
+.btn-ci-go{background:var(--g);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn-ci-done{background:rgba(39,174,96,.12);color:#2ecc71;border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:7px 16px;font-weight:700;font-family:inherit;cursor:default;}
+.overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;}
+.overlay.show{display:flex;}
+.popup{border-radius:22px;overflow:hidden;width:320px;max-width:93vw;
+       box-shadow:0 32px 80px rgba(0,0,0,.6);animation:pop .3s cubic-bezier(.34,1.56,.64,1);}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.popup.ok{background:linear-gradient(160deg,#08351a,#156535);}
+.popup.warn{background:linear-gradient(160deg,#3d2600,#7a5200);}
+.popup.error{background:linear-gradient(160deg,#350808,#6b1515);}
+.p-icon{font-size:4rem;text-align:center;padding:26px 0 6px;}
+.p-title{font-size:1.35rem;font-weight:700;text-align:center;padding:0 18px 5px;}
+.p-sub{font-size:.84rem;text-align:center;padding:0 18px 14px;opacity:.8;}
+.p-info{background:rgba(255,255,255,.1);margin:0 14px 12px;border-radius:10px;padding:12px 14px;}
+.p-row{display:flex;justify-content:space-between;font-size:.81rem;padding:3px 0;gap:10px;}
+.p-row .k{opacity:.65;white-space:nowrap;}.p-row .v{font-weight:700;text-align:right;}
+.p-close{display:block;background:rgba(255,255,255,.14);border:none;color:#fff;font-family:inherit;
+         font-weight:700;font-size:.88rem;padding:12px;width:calc(100% - 28px);margin:0 14px 10px;border-radius:10px;cursor:pointer;}
+.p-close:hover{background:rgba(255,255,255,.24);}
+.p-print{display:none;background:#004d99;border:none;color:#fff;font-family:inherit;font-weight:700;
+         font-size:.88rem;padding:12px;width:calc(100% - 28px);margin:0 14px 18px;border-radius:10px;cursor:pointer;}
+.p-print:hover{background:var(--a);}
+.log-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 16px;width:100%;}
+.log-title{font-size:.73rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.log-item{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.log-item:last-child{border-bottom:none;}
+.log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.ld-ok{background:#2ecc71;}.ld-warn{background:#f39c12;}.ld-err{background:#e74c3c;}
+.log-name{font-size:.83rem;font-weight:600;flex:1;}
+.log-time{font-size:.69rem;color:rgba(255,255,255,.4);}
+/* preview กล้องทดสอบ */
+#testVideoWrap{display:none;margin-top:12px;border-radius:10px;overflow:hidden;position:relative;}
+#testVideo{width:100%;border-radius:10px;background:#000;max-height:200px;object-fit:cover;}
+@media(max-width:480px){.main{padding:10px 8px;}}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div>
+    <h4>22<sup>nd</sup> RSF — Check-in</h4>
+    <div style="font-size:.72rem;opacity:.65;margin-top:2px;display:flex;align-items:center;">
+      <span class="dot dot-ready" id="statusDot"></span>
+      <span id="statusText">พร้อมสแกน</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button onclick="toggleTestPanel()"
+            style="background:rgba(255,165,0,.2);border:1px solid rgba(255,165,0,.35);color:#f39c12;
+                   border-radius:8px;padding:6px 12px;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer;">
+      🔧 ทดสอบกล้อง
+    </button>
+    <select class="point-sel" id="checkPoint">
+      <option value="จุด 1 — ประตูหลัก">📍 จุด 1 — ประตูหลัก</option>
+      <option value="จุด 2 — ห้องประชุม">📍 จุด 2 — ห้องประชุม</option>
+      <option value="จุด 3 — VIP">📍 จุด 3 — VIP</option>
+      <option value="จุด 4 — ลงทะเบียนหน้างาน">📍 จุด 4 — ลงทะเบียนหน้างาน</option>
+    </select>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div><div class="sb-num sb-white"  id="sbTotal">–</div><div class="sb-lbl">ลงทะเบียน</div></div>
+    <div><div class="sb-num sb-green"  id="sbChecked">–</div><div class="sb-lbl">Check-in แล้ว</div></div>
+    <div><div class="sb-num sb-orange" id="sbPending">–</div><div class="sb-lbl">รอ Check-in</div></div>
+  </div>
+
+  <!-- ★ Camera Test Panel -->
+  <div class="test-panel" id="testPanel" style="display:none;">
+    <h5>🔧 ระบบทดสอบกล้อง</h5>
+    <div class="test-item">
+      <span class="test-icon">🌐</span>
+      <span class="test-label">Protocol (HTTPS)</span>
+      <span class="test-badge tb-check" id="t-https">รอตรวจ</span>
+    </div>
+    <div class="test-item">
+      <span class="test-icon">📷</span>
+      <span class="test-label">MediaDevices API</span>
+      <span class="test-badge tb-check" id="t-api">รอตรวจ</span>
+    </div>
+    <div class="test-item">
+      <span class="test-icon">🔒</span>
+      <span class="test-label">Camera Permission</span>
+      <span class="test-badge tb-check" id="t-perm">รอตรวจ</span>
+    </div>
+    <div class="test-item">
+      <span class="test-icon">🖼️</span>
+      <span class="test-label">iframe Camera Policy</span>
+      <span class="test-badge tb-check" id="t-iframe">รอตรวจ</span>
+    </div>
+    <button class="btn-run-test" onclick="runCameraTest()">▶ เริ่มทดสอบ</button>
+    <div class="test-log" id="testLog"></div>
+
+    <!-- Live preview -->
+    <div id="testVideoWrap">
+      <video id="testVideo" autoplay playsinline muted></video>
+      <div style="position:absolute;top:8px;right:8px;">
+        <button onclick="stopTestCam()"
+                style="background:rgba(192,57,43,.8);border:none;color:#fff;border-radius:6px;
+                       padding:5px 10px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+          ⏹ ปิด
+        </button>
+      </div>
+      <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;">
+        <span style="background:rgba(39,174,96,.85);color:#fff;font-size:.72rem;padding:3px 10px;border-radius:8px;font-weight:700;">
+          ✅ กล้องทำงานได้
+        </span>
+      </div>
+    </div>
+
+    <!-- Fix suggestions -->
+    <div class="fix-box" id="fixBox">
+      <p>💡 วิธีแก้ไข:</p>
+      <div id="fixContent"></div>
+    </div>
+  </div>
+
+  <!-- Mode tabs -->
+  <div class="mode-tabs">
+    <button class="mode-btn active" id="modeQR"     onclick="setMode('qr')">📷 สแกน QR</button>
+    <button class="mode-btn"        id="modeManual" onclick="setMode('manual')">🔍 ค้นหาชื่อ</button>
+  </div>
+
+  <!-- QR Scanner -->
+  <div class="card" id="scannerCard">
+    <div class="card-head">
+      <span class="dot dot-ready" id="camDot"></span>
+      <h5>สแกน QR Code บัตรผู้เข้าร่วม</h5>
+    </div>
+    <div class="card-body">
+      <div id="qr-reader"></div>
+      <div class="scan-status ss-idle" id="scanStatus">กดปุ่มด้านล่างเพื่อเปิดกล้อง</div>
+
+      <!-- Permission error -->
+      <div class="perm-notice" id="permNotice">
+        <strong>⚠️ ไม่สามารถเปิดกล้องได้</strong>
+        <ul>
+          <li><strong>Chrome/Edge:</strong> แถบ URL → 🔒 → Site settings → Camera → Allow → รีโหลด</li>
+          <li><strong>Safari iOS:</strong> Settings → Safari → Camera → Allow</li>
+          <li><strong>Firefox:</strong> แถบ URL → 🔒 → Permissions → Camera → Allow</li>
+          <li>หรือใช้ <strong>กรอก Token</strong> ด้านล่างแทน</li>
+        </ul>
+      </div>
+
+      <!-- ★ กล้องหลังเพียงปุ่มเดียว -->
+      <button class="btn-start" id="btnStart" onclick="startCam()">📷 เปิดกล้อง</button>
+      <button class="btn-stop"  id="btnStop"  onclick="stopCam()">⏹ หยุดกล้อง</button>
+
+      <!-- Fallback: upload image -->
+      <div class="upload-area" onclick="document.getElementById('qrFile').click()" id="uploadArea">
+        <input type="file" id="qrFile" accept="image/*" onchange="scanFile(this)">
+        <div class="ui">🖼️</div>
+        <p>อัปโหลดรูป QR Code (fallback เมื่อกล้องไม่ทำงาน)</p>
+      </div>
+
+      <!-- Fallback: manual token -->
+      <div class="token-row">
+        <input type="text" id="manualToken" placeholder="กรอก Token เช่น RSF22-XXXXXXXX"
+               onkeydown="if(event.key==='Enter') submitToken()">
+        <button class="btn-send" onclick="submitToken()">✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Search -->
+  <div class="card" id="manualCard" style="display:none;">
+    <div class="card-head">
+      <span style="font-size:1.1rem;">🔍</span>
+      <h5>ค้นหาชื่อ-นามสกุล</h5>
+    </div>
+    <div class="card-body">
+      <div class="search-row">
+        <input type="text" id="nameSearch" placeholder="พิมพ์ชื่อหรือนามสกุล..."
+               onkeydown="if(event.key==='Enter') doSearch()">
+        <button class="btn-search" onclick="doSearch()">ค้นหา</button>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-card">
+    <div class="log-title">รายการล่าสุด</div>
+    <div id="logList">
+      <p style="font-size:.8rem;color:rgba(255,255,255,.3);text-align:center;padding:8px 0;">ยังไม่มีการ Check-in</p>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- Result popup -->
+<div class="overlay" id="resultOverlay" onclick="closeResult()">
+  <div class="popup" id="resultPopup" onclick="event.stopPropagation()">
+    <div class="p-icon"  id="rpIcon">–</div>
+    <div class="p-title" id="rpTitle">–</div>
+    <div class="p-sub"   id="rpSub">–</div>
+    <div class="p-info"  id="rpInfo"></div>
+    <button class="p-close" onclick="closeResult()">ปิด / กดที่ใดก็ได้</button>
+    <button class="p-print" id="btnPrint" onclick="doPrintBadge()">&#9113; พิมพ์บัตร</button>
+  </div>
+</div>
+
+<div id="qr-reader-file-tmp" style="display:none;"></div>
+
+<script>
+const $   = id => document.getElementById(id);
+const esc = s  => { const d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; };
+
+let html5QR=null, scanning=false, logItems=[], currentCIData=null;
+let lastToken="", lastScanTime=0, testStream=null, autoTimer=null;
+
+// ════════════════════════════════════════════════
+//  CAMERA TEST SYSTEM
+// ════════════════════════════════════════════════
+function toggleTestPanel(){
+  const p=$("testPanel");
+  p.style.display = p.style.display==="none" ? "block" : "none";
+  if(p.style.display==="block") runCameraTest();
+}
+
+function tlog(msg){
+  const el=$("testLog"); el.classList.add("show");
+  el.innerHTML += `<div>[${new Date().toLocaleTimeString("th-TH")}] ${msg}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+function setBadge(id,cls,txt){
+  const el=$(id); el.className="test-badge "+cls; el.textContent=txt;
+}
+
+async function runCameraTest(){
+  ["t-https","t-api","t-perm","t-cam","t-iframe"].forEach(id=>setBadge(id,"tb-check","กำลังตรวจ"));
+  $("testLog").innerHTML=""; $("testLog").classList.add("show");
+  $("fixBox").style.display="none"; $("testVideoWrap").style.display="none";
+  const fixes=[];
+
+  // 1. HTTPS
+  tlog("ตรวจสอบ Protocol...");
+  const isHttps = location.protocol==="https:" || location.hostname==="localhost";
+  if(isHttps){ setBadge("t-https","tb-ok","✓ HTTPS"); tlog("✅ "+location.protocol); }
+  else{ setBadge("t-https","tb-error","✗ ต้อง HTTPS"); tlog("❌ ต้องใช้ HTTPS"); fixes.push("เปิดผ่าน HTTPS เท่านั้น"); }
+
+  // 2. MediaDevices API
+  tlog("ตรวจสอบ MediaDevices API...");
+  const hasAPI=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+  if(hasAPI){ setBadge("t-api","tb-ok","✓ รองรับ"); tlog("✅ API พร้อมใช้"); }
+  else{ setBadge("t-api","tb-error","✗ ไม่รองรับ"); tlog("❌ Browser ไม่รองรับ"); fixes.push("ใช้ Chrome, Safari หรือ Firefox รุ่นใหม่"); }
+
+  // 3. Permission
+  tlog("ตรวจสอบ Camera Permission...");
+  try{
+    if(navigator.permissions){
+      const p=await navigator.permissions.query({name:"camera"});
+      tlog("Permission state: "+p.state);
+      if(p.state==="granted"){ setBadge("t-perm","tb-ok","✓ อนุญาตแล้ว"); }
+      else if(p.state==="denied"){ setBadge("t-perm","tb-error","✗ ถูกบล็อก"); fixes.push("Chrome: URL Bar → 🔒 → Camera → Allow → Reload"); }
+      else{ setBadge("t-perm","tb-warn","⚠ รอยืนยัน"); tlog("⚠️ จะถาม dialog เมื่อเปิดกล้อง"); }
+    }else{ setBadge("t-perm","tb-warn","⚠ ตรวจไม่ได้"); }
+  }catch(e){ setBadge("t-perm","tb-warn","⚠ ตรวจไม่ได้"); tlog("⚠️ "+e.message); }
+
+  // 4. ทดสอบกล้องหลังจริง
+  if(hasAPI){
+    tlog("ทดสอบเปิดกล้องหลัง...");
+    if(testStream) testStream.getTracks().forEach(t=>t.stop());
+
+    // ลำดับ constraints: exact → ideal → any
+    const tryList=[
+      {video:{facingMode:{exact:"environment"}}},
+      {video:{facingMode:{ideal:"environment"}}},
+      {video:true}
+    ];
+    let opened=false;
+    for(const c of tryList){
+      try{
+        testStream=await navigator.mediaDevices.getUserMedia(c);
+        const tr=testStream.getVideoTracks()[0];
+        const st=tr.getSettings();
+        tlog(`✅ ${tr.label} — ${st.width||"?"}×${st.height||"?"}`);
+        setBadge("t-cam","tb-ok","✓ ทำงานได้");
+        const vid=$("testVideo");
+        vid.srcObject=testStream;
+        $("testVideoWrap").style.display="block";
+        opened=true;
+        break;
+      }catch(err){
+        tlog("⚠️ "+err.name+": "+err.message);
+        if(err.name==="NotAllowedError"||err.name==="PermissionDeniedError"){
+          setBadge("t-cam","tb-error","✗ ถูกปฏิเสธ");
+          setBadge("t-perm","tb-error","✗ ถูกบล็อก");
+          fixes.push("Chrome: URL Bar → 🔒 → Site settings → Camera → Allow → รีโหลด");
+          fixes.push("Safari iOS: Settings → Safari → Camera → Allow");
+          break;
+        }
+      }
+    }
+    if(!opened && !fixes.some(f=>f.includes("Allow"))){
+      setBadge("t-cam","tb-error","✗ ไม่สำเร็จ");
+      fixes.push("ตรวจสอบว่าไม่มีแอปอื่นใช้กล้องอยู่ แล้วลองใหม่");
+    }
+  }else{
+    setBadge("t-cam","tb-error","✗ API ไม่รองรับ");
+  }
+
+  // 5. iframe check
+  tlog("ตรวจสอบ iframe...");
+  if(window.self===window.top){
+    setBadge("t-iframe","tb-ok","✓ Full page"); tlog("✅ Full page (ไม่ใช่ iframe)");
+  }else{
+    setBadge("t-iframe","tb-warn","⚠ ใน iframe"); tlog("⚠️ รันใน iframe");
+    fixes.push("Google Apps Script: เปิด URL โดยตรง (/exec?page=checkin) ไม่ใช่ผ่าน embed");
+  }
+
+  if(fixes.length>0){
+    $("fixBox").style.display="block";
+    $("fixContent").innerHTML=fixes.map((f,i)=>`<div style="padding:2px 0;">${i+1}. ${esc(f)}</div>`).join("");
+  }
+  tlog("─── เสร็จสิ้น ───");
+}
+
+function stopTestCam(){
+  if(testStream){ testStream.getTracks().forEach(t=>t.stop()); testStream=null; }
+  $("testVideoWrap").style.display="none";
+  $("testVideo").srcObject=null;
+}
+
+// ════════════════════════════════════════════════
+//  CAMERA — กล้องหลังอย่างเดียว (3-level fallback)
+// ════════════════════════════════════════════════
+async function startCam(){
+  if(scanning) return;
+  $("permNotice").classList.remove("show");
+  setSt("กำลังขอสิทธิ์ใช้กล้อง...","ss-scanning"); setDot("scanning");
+
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    camErr("เบราว์เซอร์ไม่รองรับการใช้กล้อง"); return;
+  }
+
+  // ขอ permission ก่อน (3 fallback)
+  let ok=false, lastErr=null;
+  for(const c of [{video:{facingMode:{exact:"environment"}}},{video:{facingMode:{ideal:"environment"}}},{video:true}]){
+    try{ const s=await navigator.mediaDevices.getUserMedia(c); s.getTracks().forEach(t=>t.stop()); ok=true; break; }
+    catch(e){ lastErr=e; if(e.name==="NotAllowedError"||e.name==="PermissionDeniedError") break; }
+  }
+
+  if(!ok){
+    camErr((lastErr&&lastErr.name==="NotAllowedError")?"กล้องถูกบล็อก — กรุณาอนุญาตใน browser":"ไม่พบกล้อง: "+(lastErr?lastErr.message:""));
+    return;
+  }
+
+  html5QR=new Html5Qrcode("qr-reader",{verbose:false});
+  const cfg={fps:10,qrbox:(w,h)=>{const s=Math.round(Math.min(w,h)*.72);return{width:s,height:s};},aspectRatio:1.0};
+
+  let started=false;
+  for(const fm of [{facingMode:{exact:"environment"}},{facingMode:{ideal:"environment"}},{facingMode:"environment"}]){
+    try{ await html5QR.start(fm,cfg,onScanOk,()=>{}); started=scanning=true; showScanUI(); break; }catch(e){}
+  }
+
+  if(!started){
+    try{ await html5QR.start({facingMode:"user"},cfg,onScanOk,()=>{}); started=scanning=true; showScanUI(); setSt("⚠️ ใช้กล้องที่มีอยู่","ss-scanning"); }
+    catch(e){ try{html5QR.clear();}catch(_){} html5QR=null; camErr("เริ่มกล้องไม่ได้: "+e.message); }
+  }
+}
+
+async function stopCam(){
+  if(html5QR&&scanning){ try{await html5QR.stop();}catch(e){} try{html5QR.clear();}catch(e){} }
+  html5QR=null; scanning=false; resetScanUI();
+}
+
+function showScanUI(){ setSt("🎯 ชี้กล้องไปที่ QR Code บนบัตร","ss-scanning"); setDot("scanning"); $("btnStart").style.display="none"; $("btnStop").style.display="block"; $("uploadArea").style.display="none"; }
+function resetScanUI(){ setSt("กดปุ่มด้านล่างเพื่อเปิดกล้อง","ss-idle"); setDot("ready"); $("btnStart").style.display="block"; $("btnStop").style.display="none"; $("uploadArea").style.display="block"; }
+function camErr(msg){ setSt("❌ "+msg,"ss-error"); setDot("error"); $("permNotice").classList.add("show"); $("btnStart").style.display="block"; $("btnStop").style.display="none"; }
+function setSt(msg,cls){ const el=$("scanStatus"); el.className="scan-status "+cls; el.textContent=msg; }
+function setDot(s){ const c={ready:"dot-ready",scanning:"dot-scanning",error:"dot-error"}[s]||"dot-ready"; $("statusDot").className="dot "+c; $("camDot").className="dot "+c; $("statusText").textContent={ready:"พร้อมสแกน",scanning:"สแกนอยู่...",error:"เกิดข้อผิดพลาด"}[s]||"พร้อมสแกน"; }
+
+function onScanOk(token){
+  if(token===lastToken&&Date.now()-lastScanTime<2500) return;
+  lastToken=token; lastScanTime=Date.now();
+  setSt("⏳ กำลังตรวจสอบ...","ss-scanning");
+  doCheckIn(token.trim());
+}
+
+async function scanFile(inp){
+  if(!inp.files||!inp.files[0]) return;
+  setSt("⏳ กำลังอ่าน QR จากรูป...","ss-scanning");
+  const sc=new Html5Qrcode("qr-reader-file-tmp");
+  try{ const r=await sc.scanFile(inp.files[0],false); setSt("✅ อ่าน QR สำเร็จ","ss-ok"); doCheckIn(r.trim()); }
+  catch(e){ setSt("❌ ไม่พบ QR Code ในรูปนี้","ss-error"); setTimeout(()=>setSt("กดปุ่มด้านล่างเพื่อเปิดกล้อง","ss-idle"),2500); }
+  finally{ try{sc.clear();}catch(e){} inp.value=""; }
+}
+
+function submitToken(){
+  const t=$("manualToken").value.trim();
+  if(!t){$("manualToken").style.borderColor="#e74c3c";setTimeout(()=>$("manualToken").style.borderColor="",1500);return;}
+  doCheckIn(t); $("manualToken").value="";
+}
+
+// ════════════════════════════════════════════════
+//  CHECK-IN
+// ════════════════════════════════════════════════
+// ════════════════════════════════════════════════
+//  GAS ENDPOINT — วาง URL Web App ที่ Deploy แล้วตรงนี้
+// ════════════════════════════════════════════════
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwUxnon-pbItOdjLn3bABEqAmvBS_F_3AFWv77Be4T8qHrZFRrZ0WC17Cu7rKQHhwlZ/exec";
+
+function doCheckIn(token){
+  const point=$("checkPoint").value;
+  fetch(`${GAS_URL}?action=checkin&token=${encodeURIComponent(token)}&point=${encodeURIComponent(point)}`)
+    .then(r=>r.json())
+    .then(res=>{ showResult(res,token); if(scanning) setSt("🎯 ชี้กล้องไปที่ QR Code","ss-scanning"); })
+    .catch(()=>setSt("❌ เชื่อมต่อ server ไม่ได้ กรุณาลองใหม่","ss-error"));
+}
+
+// ════════════════════════════════════════════════
+//  RESULT POPUP
+// ════════════════════════════════════════════════
+function showResult(res,token){
+  const pop=$("resultPopup");
+  $("btnPrint").style.display="none"; currentCIData=null;
+
+  if(res.status==="ok"){
+    pop.className="popup ok";
+    $("rpIcon").textContent="✅"; $("rpTitle").textContent="Check-in สำเร็จ!"; $("rpSub").textContent=res.time||"";
+    $("rpInfo").innerHTML=row("ชื่อ",res.name)+row("Section",res.section)+row("สังกัด",res.affil)+row("อาหาร",res.food)+row("Token",token);
+    addLog("ok",res.name,res.time); loadStats();
+    setSt("✅ "+res.name,"ss-ok"); setTimeout(()=>{if(scanning)setSt("🎯 ชี้กล้องไปที่ QR Code","ss-scanning");},2200);
+    currentCIData={...res,token}; $("btnPrint").style.display="block";
+
+  }else if(res.status==="already"){
+    pop.className="popup warn";
+    $("rpIcon").textContent="⚠️"; $("rpTitle").textContent="Check-in แล้ว"; $("rpSub").textContent=res.name||"";
+    $("rpInfo").innerHTML=row("Check-in ที่",res.point)+row("เวลา",res.time);
+    addLog("warn",res.name||"ซ้ำ",res.time||"");
+    currentCIData={...res,token}; $("btnPrint").style.display="block";
+
+  }else{
+    pop.className="popup error";
+    $("rpIcon").textContent="❌"; $("rpTitle").textContent="ไม่พบข้อมูล"; $("rpSub").textContent="Token: "+token;
+    $("rpInfo").innerHTML=row("สถานะ","ไม่พบ QR นี้ในระบบ");
+    addLog("err","ไม่พบ Token","");
+  }
+  $("resultOverlay").classList.add("show");
+  clearTimeout(autoTimer); autoTimer=setTimeout(closeResult,6000);
+}
+
+function row(k,v){ return `<div class="p-row"><span class="k">${esc(k)}</span><span class="v">${esc(v||"–")}</span></div>`; }
+function closeResult(){ $("resultOverlay").classList.remove("show"); clearTimeout(autoTimer); }
+
+// ════════════════════════════════════════════════
+//  PRINT BADGE (HTML window)
+// ════════════════════════════════════════════════
+async function doPrintBadge(){
+  if(!currentCIData) return;
+  closeResult();
+  const d=currentCIData, token=d.token||"";
+  let qrUrl="";
+  try{
+    const qd=document.createElement("div"); qd.style.cssText="position:absolute;left:-9999px;top:-9999px;";
+    document.body.appendChild(qd);
+    new QRCode(qd,{text:token,width:280,height:280,colorDark:"#003270",colorLight:"#fff",correctLevel:QRCode.CorrectLevel.H});
+    await new Promise(r=>setTimeout(r,600));
+    const el=qd.querySelector("canvas")||qd.querySelector("img");
+    if(el) qrUrl=el.tagName==="CANVAS"?el.toDataURL("image/png"):el.src;
+    document.body.removeChild(qd);
+  }catch(e){}
+
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>Badge — ${token}</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Sarabun',sans-serif;background:#f0f4f9;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}.badge{width:340px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 16px 48px rgba(0,50,112,.2);}.bh{background:linear-gradient(135deg,#003270,#0066cc);padding:20px 24px 16px;color:#fff;text-align:center;}.bh h2{font-size:1.1rem;font-weight:700;margin-bottom:3px;}.bh p{font-size:.78rem;opacity:.85;}.bb{padding:20px 22px 16px;}.qr{display:flex;justify-content:center;margin-bottom:10px;}.qr img{width:190px;height:190px;border:4px solid #fff;border-radius:10px;box-shadow:0 4px 16px rgba(0,50,112,.15);}.token{text-align:center;font-family:'Courier New',monospace;font-size:.88rem;font-weight:700;color:#003270;letter-spacing:1.5px;margin-bottom:4px;}.tsub{text-align:center;font-size:.7rem;color:#8a9ab0;margin-bottom:14px;}hr{border:none;border-top:1.5px dashed #d0dce8;margin:12px 0;}.nth{text-align:center;font-size:1.15rem;font-weight:700;color:#002060;margin-bottom:3px;}.nen{text-align:center;font-size:.83rem;color:#7a8fa8;margin-bottom:14px;}table{width:100%;border-collapse:collapse;}td{padding:5px 10px;font-size:.84rem;}tr:nth-child(odd) td{background:#f5f8fc;}.k{font-weight:700;color:#334;width:38%;}.v{color:#445;}.bf{background:#003270;padding:10px 24px;text-align:center;color:rgba(255,255,255,.75);font-size:.67rem;}.np{text-align:center;margin-top:18px;}.bp{background:#003270;color:#fff;border:none;border-radius:30px;padding:11px 30px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;}@media print{body{background:#fff;padding:0;}.badge{box-shadow:none;border-radius:0;width:100%;max-width:340px;margin:auto;}.np{display:none!important;}}</style>
+</head><body><div><div class="badge"><div class="bh"><h2>22<sup style="font-size:.58em;">nd</sup> Ramathibodi Surgical Forum</h2><p>8–9 ตุลาคม 2569 · ห้องประชุมอรรถสิทธิ์ เวชชาชีวะ</p></div><div class="bb"><div class="qr">${qrUrl?`<img src="${qrUrl}" alt="QR">`:`<div style="width:190px;height:190px;background:#eef3ff;display:flex;align-items:center;justify-content:center;border-radius:10px;color:#aab;font-size:.8rem;">QR</div>`}</div><div class="token">${token}</div><div class="tsub">&#9733; บัตร Check-in &middot; Your Entry Pass</div><hr><div class="nth">${d.name||""}</div>${d.nameEn?`<div class="nen">${d.nameEn}</div>`:""}<table><tr><td class="k">Section</td><td class="v">${d.section||"-"}</td></tr><tr><td class="k">วิชาชีพ</td><td class="v">${d.profession||"-"}</td></tr><tr><td class="k">สังกัด</td><td class="v">${d.affil||"-"}</td></tr><tr><td class="k">อาหาร</td><td class="v">${d.food||"-"}</td></tr></table></div><div class="bf">Dept. of Surgery · Ramathibodi Hospital · Mahidol University</div></div><div class="np"><button class="bp" onclick="window.print()">&#9113; พิมพ์ / บันทึก PDF</button><p style="margin-top:8px;font-size:.75rem;color:#888;font-family:'Sarabun',sans-serif;">เลือก "Save as PDF" ใน print dialog</p></div></div>
+<script>document.fonts.ready.then(()=>setTimeout(()=>window.print(),500));<\/script></body></html>`;
+
+  const win=window.open("","_blank","width=420,height=720");
+  if(win){win.document.write(html);win.document.close();}
+  else{const b=new Blob([html],{type:"text/html;charset=utf-8"});window.open(URL.createObjectURL(b),"_blank");}
+}
+
+// ════════════════════════════════════════════════
+//  LOG / MODE / SEARCH / STATS
+// ════════════════════════════════════════════════
+function addLog(type,name,time){
+  logItems.unshift({type,name,time});
+  if(logItems.length>6) logItems.pop();
+  $("logList").innerHTML=logItems.map(i=>`<div class="log-item"><div class="log-dot ld-${i.type}"></div><div class="log-name">${esc(i.name)}</div><div class="log-time">${esc(i.time)}</div></div>`).join("");
+}
+
+function setMode(m){
+  $("modeQR").classList.toggle("active",m==="qr");
+  $("modeManual").classList.toggle("active",m==="manual");
+  $("scannerCard").style.display=m==="qr"?"block":"none";
+  $("manualCard").style.display=m==="manual"?"block":"none";
+  if(m==="manual"&&scanning) stopCam();
+}
+
+function doSearch(){
+  const q=$("nameSearch").value.trim(); if(!q) return;
+  $("searchResults").innerHTML=`<div style="text-align:center;padding:18px;color:rgba(255,255,255,.4);"><span class="dot dot-scanning" style="display:inline-block;margin-right:6px;"></span>กำลังค้นหา...</div>`;
+  fetch(`${GAS_URL}?action=search&q=${encodeURIComponent(q)}`)
+    .then(r=>r.json())
+    .then(data=>{
+      if(!data.results||!data.results.length){ $("searchResults").innerHTML=`<p style="color:rgba(255,255,255,.4);font-size:.85rem;text-align:center;padding:14px;">ไม่พบข้อมูล</p>`; return; }
+      $("searchResults").innerHTML=data.results.map(p=>`<div class="result-item"><div class="rn">${esc(p.name)}</div><div class="rm">${esc(p.section)} · ${esc(p.affil)} · ${esc(p.food)}</div>${p.checkedIn?`<span class="btn-ci-done">✓ Check-in แล้ว ${esc(p.checkTime)}</span>`:`<button class="btn-ci-go" onclick="manualCI('${esc(p.token)}',this)">✓ Check-in ที่นี่</button>`}</div>`).join("");
+    })
+    .catch(()=>{ $("searchResults").innerHTML=`<p style="color:#e74c3c;font-size:.85rem;text-align:center;">เกิดข้อผิดพลาด</p>`; });
+}
+
+function manualCI(token,btn){
+  const point=$("checkPoint").value;
+  btn.textContent="กำลัง Check-in..."; btn.disabled=true;
+  fetch(`${GAS_URL}?action=checkin&token=${encodeURIComponent(token)}&point=${encodeURIComponent(point)}`)
+    .then(r=>r.json())
+    .then(res=>{ showResult(res,token); doSearch(); })
+    .catch(()=>{ btn.textContent="❌ ผิดพลาด"; btn.disabled=false; });
+}
+
+function loadStats(){
+  fetch(`${GAS_URL}?action=stats`)
+    .then(r=>r.json())
+    .then(s=>{ if(s.status!=="ok") return; $("sbTotal").textContent=s.total; $("sbChecked").textContent=s.checked; $("sbPending").textContent=s.pending; })
+    .catch(()=>{});
+}
+
+// Init
+loadStats();
+setInterval(loadStats,20000);
+
+// auto-check permission เงียบๆ
+setTimeout(async()=>{
+  if(!navigator.permissions) return;
+  try{
+    const p=await navigator.permissions.query({name:"camera"});
+    if(p.state==="denied"){ setSt("⚠️ กล้องถูกบล็อก — กด 🔧 ทดสอบกล้อง เพื่อดูวิธีแก้","ss-error"); setDot("error"); }
+  }catch(e){}
+},800);
+</script>
+</body>
+</html>
